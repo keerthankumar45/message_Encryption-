@@ -1,0 +1,135 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import javax.crypto.Cipher;
+import javax.crypto.spec.SecretKeySpec;
+import java.util.Base64;
+
+public class SimpleCryptoGUI extends JFrame implements ActionListener {
+
+    private JTextField messageField;
+    private JTextField privateKeyField;
+    private JLabel encryptedMessageLabel;
+    private JLabel decryptedMessageLabel;
+
+    public SimpleCryptoGUI() {
+        setTitle("Simple Crypto");
+        setSize(500, 300);
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setLocationRelativeTo(null); // Center the frame
+        setLayout(new BorderLayout());
+
+        // Top panel for input fields
+        JPanel inputPanel = new JPanel();
+        inputPanel.setLayout(new GridLayout(2, 2));
+        inputPanel.setBackground(Color.lightGray);
+
+        JLabel messageLabel = new JLabel("Message to encrypt:");
+        messageField = new JTextField(20);
+        inputPanel.add(messageLabel);
+        inputPanel.add(messageField);
+
+        JLabel privateKeyLabel = new JLabel("Private Key:");
+        privateKeyField = new JTextField(20);
+        inputPanel.add(privateKeyLabel);
+        inputPanel.add(privateKeyField);
+
+        add(inputPanel, BorderLayout.NORTH);
+
+        // Center panel for buttons
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.setLayout(new FlowLayout(FlowLayout.CENTER));
+        buttonPanel.setBackground(Color.lightGray);
+
+        JButton encryptButton = new JButton("Encrypt");
+        encryptButton.addActionListener(this);
+        buttonPanel.add(encryptButton);
+
+        JButton decryptButton = new JButton("Decrypt");
+        decryptButton.addActionListener(this);
+        buttonPanel.add(decryptButton);
+
+        add(buttonPanel, BorderLayout.CENTER);
+
+        // Bottom panel for encrypted and decrypted messages
+        JPanel messagePanel = new JPanel();
+        messagePanel.setLayout(new GridLayout(2, 2));
+        messagePanel.setBackground(Color.lightGray);
+
+        JLabel encryptedMessageTextLabel = new JLabel("Encrypted Message:");
+        encryptedMessageLabel = new JLabel("");
+        messagePanel.add(encryptedMessageTextLabel);
+        messagePanel.add(encryptedMessageLabel);
+
+        JLabel decryptedMessageTextLabel = new JLabel("Decrypted Message:");
+        decryptedMessageLabel = new JLabel("");
+        messagePanel.add(decryptedMessageTextLabel);
+        messagePanel.add(decryptedMessageLabel);
+
+        add(messagePanel, BorderLayout.SOUTH);
+    }
+
+    public void actionPerformed(ActionEvent e) {
+        try {
+            String message = messageField.getText();
+            String privateKeyStr = privateKeyField.getText();
+
+            // Check if the private key is provided
+            if (privateKeyStr.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Please enter a private key.", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            if (e.getActionCommand().equals("Encrypt")) {
+                byte[] privateKeyBytes = privateKeyStr.getBytes();
+                byte[] encryptedMessage = encrypt(message, privateKeyBytes);
+                encryptedMessageLabel.setText(Base64.getEncoder().encodeToString(encryptedMessage));
+                decryptedMessageLabel.setText(""); // Clear decrypted message
+            } else if (e.getActionCommand().equals("Decrypt")) {
+                // Clear decrypted message label
+                decryptedMessageLabel.setText("");
+
+                // Prompt for private key again
+                privateKeyStr = JOptionPane.showInputDialog(this, "Enter the private key for decryption:");
+                if (privateKeyStr == null || privateKeyStr.isEmpty()) {
+                    JOptionPane.showMessageDialog(this, "Please enter a private key for decryption.", "Error", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+                
+                byte[] privateKeyBytes = privateKeyStr.getBytes();
+                String encryptedMessageText = encryptedMessageLabel.getText();
+                byte[] encryptedMessage = Base64.getDecoder().decode(encryptedMessageText);
+                String decryptedMessage = decrypt(encryptedMessage, privateKeyBytes);
+                decryptedMessageLabel.setText(decryptedMessage);
+            }
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    public static byte[] encrypt(String message, byte[] privateKey) throws Exception {
+        byte[] key = new byte[16];
+        System.arraycopy(privateKey, 0, key, 0, Math.min(privateKey.length, key.length));
+        SecretKeySpec secretKeySpec = new SecretKeySpec(key, "AES");
+        Cipher cipher = Cipher.getInstance("AES");
+        cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec);
+        return cipher.doFinal(message.getBytes());
+    }
+
+    public static String decrypt(byte[] encryptedMessage, byte[] privateKey) throws Exception {
+        byte[] key = new byte[16];
+        System.arraycopy(privateKey, 0, key, 0, Math.min(privateKey.length, key.length));
+        SecretKeySpec secretKeySpec = new SecretKeySpec(key, "AES");
+        Cipher cipher = Cipher.getInstance("AES");
+        cipher.init(Cipher.DECRYPT_MODE, secretKeySpec);
+        byte[] decryptedBytes = cipher.doFinal(encryptedMessage);
+        return new String(decryptedBytes);
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            SimpleCryptoGUI gui = new SimpleCryptoGUI();
+            gui.setVisible(true);
+        });
+    }
+}
